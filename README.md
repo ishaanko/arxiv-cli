@@ -5,7 +5,8 @@ A fast, minimal arXiv CLI built for humans *and* agents. Single ~1.4 MB static b
 ## Install
 
 ```sh
-brew install ishaanko/tap/arxiv
+brew tap ishaanko/tap https://github.com/ishaanko/arxiv-cli
+brew install arxiv
 ```
 
 Or build from source:
@@ -63,4 +64,4 @@ arxiv latest cs.CL --max 10
 
 ## Releasing
 
-Tag `vX.Y.Z`, create a GitHub release with the `arxiv-X.Y.Z-arm64-darwin.tar.gz` binary asset, then update `url`/`sha256`/`version` in [`ishaanko/homebrew-tap`](https://github.com/ishaanko/homebrew-tap) (mirrored here as `Formula/arxiv.rb`). Apple Silicon installs the prebuilt binary; other platforms build from the source tarball.
+This repo doubles as its own Homebrew tap via `Formula/arxiv.rb`. To release: tag `vX.Y.Z`, create a GitHub release with the `arxiv-X.Y.Z-arm64-darwin.tar.gz` binary asset, then bump `url`/`sha256`/`version` in the formula. Apple Silicon installs the prebuilt binary; other platforms build from the source tarball.
