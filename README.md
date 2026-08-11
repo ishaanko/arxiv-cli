@@ -62,6 +62,17 @@ arxiv latest cs.CL --max 10
 | `--sort`, `-s` | `relevance` (default), `date`, `updated` |
 | `--max`, `-m` / `--start` | Page size / offset for pagination |
 
+## Claude Code skill
+
+`skills/arxiv/SKILL.md` teaches Claude Code (and other SKILL.md-compatible agents) to use this CLI instead of fetching arxiv.org pages. Install it user-wide:
+
+```sh
+mkdir -p ~/.claude/skills/arxiv
+curl -fsSL https://raw.githubusercontent.com/ishaanko/arxiv-cli/main/skills/arxiv/SKILL.md -o ~/.claude/skills/arxiv/SKILL.md
+```
+
+Or per-project: copy it to `.claude/skills/arxiv/SKILL.md` in the repo where you want it active.
+
 ## Releasing
 
 This repo doubles as its own Homebrew tap via `Formula/arxiv.rb`. To release: tag `vX.Y.Z`, create a GitHub release with the `arxiv-X.Y.Z-arm64-darwin.tar.gz` binary asset, then bump `url`/`sha256`/`version` in the formula. Apple Silicon installs the prebuilt binary; other platforms build from the source tarball.
