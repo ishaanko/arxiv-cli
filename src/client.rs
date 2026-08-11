@@ -24,6 +24,43 @@ fn agent() -> ureq::Agent {
         .build()
 }
 
+/// GET with automatic retry on rate limiting (429) and transient
+/// unavailability (5xx). arXiv's API sheds load with 503s and asks clients
+/// to back off; honor Retry-After when present, else use a growing delay.
+fn get_with_retry(url: &str) -> Result<ureq::Response> {
+    const MAX_ATTEMPTS: u32 = 4;
+    const BACKOFF_SECS: [u64; 3] = [5, 15, 30];
+    let agent = agent();
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        let err = match agent.get(url).call() {
+            Ok(resp) => return Ok(resp),
+            Err(e) => e,
+        };
+        let (retryable, retry_after) = match &err {
+            ureq::Error::Status(code, resp) if *code == 429 || *code >= 500 => (
+                true,
+                resp.header("Retry-After").and_then(|v| v.parse::<u64>().ok()),
+            ),
+            ureq::Error::Transport(_) => (true, None),
+            _ => (false, None),
+        };
+        if !retryable || attempt >= MAX_ATTEMPTS {
+            return Err(err).with_context(|| format!("request failed: {url}"));
+        }
+        // arXiv sends "Retry-After: 0" on 503s; retrying instantly just
+        // escalates to a 429, so treat the header as a floor-raiser only
+        // and never wait less than our own schedule.
+        let delay = retry_after
+            .unwrap_or(0)
+            .max(BACKOFF_SECS[(attempt - 1) as usize % BACKOFF_SECS.len()])
+            .min(120);
+        eprintln!("arxiv: {err}; retrying in {delay}s (attempt {}/{MAX_ATTEMPTS})", attempt + 1);
+        std::thread::sleep(std::time::Duration::from_secs(delay));
+    }
+}
+
 fn urlencode(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
@@ -97,10 +134,8 @@ pub fn by_ids(ids: &[String]) -> Result<Vec<Paper>> {
 }
 
 fn fetch_feed(url: &str) -> Result<Vec<Paper>> {
-    let body = agent()
-        .get(url)
-        .call()
-        .with_context(|| format!("arXiv API request failed: {url}"))?
+    let body = get_with_retry(url)
+        .context("arXiv API request failed")?
         .into_string()
         .context("failed to read arXiv API response")?;
     parse_feed(&body)
@@ -208,10 +243,7 @@ pub fn download_pdf(id: &str, output: Option<&str>, dir: Option<&str>) -> Result
         }
     }
 
-    let resp = agent()
-        .get(&url)
-        .call()
-        .with_context(|| format!("failed to download PDF from {url}"))?;
+    let resp = get_with_retry(&url).context("failed to download PDF")?;
 
     let mut reader = resp.into_reader();
     let mut buf = Vec::with_capacity(1 << 20);
@@ -230,10 +262,8 @@ pub fn download_pdf(id: &str, output: Option<&str>, dir: Option<&str>) -> Result
 
 pub fn bibtex(id: &str) -> Result<String> {
     let url = format!("https://arxiv.org/bibtex/{id}");
-    let body = agent()
-        .get(&url)
-        .call()
-        .with_context(|| format!("failed to fetch BibTeX from {url}"))?
+    let body = get_with_retry(&url)
+        .context("failed to fetch BibTeX")?
         .into_string()
         .context("failed to read BibTeX response")?;
     if !body.trim_start().starts_with('@') {
