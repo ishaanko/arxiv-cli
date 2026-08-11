@@ -62,16 +62,20 @@ arxiv latest cs.CL --max 10
 | `--sort`, `-s` | `relevance` (default), `date`, `updated` |
 | `--max`, `-m` / `--start` | Page size / offset for pagination |
 
-## Claude Code skill
+## Agent skill
 
-`skills/arxiv/SKILL.md` teaches Claude Code (and other SKILL.md-compatible agents) to use this CLI instead of fetching arxiv.org pages. Install it user-wide:
+`skills/arxiv/SKILL.md` teaches coding agents (Claude Code, Codex, Gemini CLI, Zed, and any SKILL.md-compatible agent) to use this CLI instead of fetching arxiv.org pages. Install via [skills.sh](https://skills.sh):
+
+```sh
+npx skills add ishaanko/arxiv-cli
+```
+
+This detects the agents on your machine and installs the skill for each. Manual alternative for Claude Code:
 
 ```sh
 mkdir -p ~/.claude/skills/arxiv
 curl -fsSL https://raw.githubusercontent.com/ishaanko/arxiv-cli/main/skills/arxiv/SKILL.md -o ~/.claude/skills/arxiv/SKILL.md
 ```
-
-Or per-project: copy it to `.claude/skills/arxiv/SKILL.md` in the repo where you want it active.
 
 ## Releasing
 
