@@ -16,9 +16,10 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
       - name: Build
         run: cargo build --release
       - name: Package and upload
@@ -28,6 +29,8 @@ jobs:
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           NAME="arxiv-${TAG#v}-x86_64-windows"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes
           cd target/release
           7z a "$NAME.zip" arxiv.exe
           gh release upload "$TAG" "$NAME.zip" --clobber --repo "$GITHUB_REPOSITORY"
