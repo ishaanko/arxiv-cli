@@ -4,12 +4,21 @@ A fast, minimal arXiv CLI built for humans *and* agents. Single ~1.4 MB static b
 
 ## Install
 
+macOS / Linux (Homebrew):
+
 ```sh
 brew tap ishaanko/tap https://github.com/ishaanko/arxiv-cli
 brew install arxiv
 ```
 
-Or build from source:
+Windows (Scoop):
+
+```powershell
+scoop bucket add ishaanko https://github.com/ishaanko/arxiv-cli
+scoop install arxiv
+```
+
+Or build from source on any platform:
 
 ```sh
 cargo install --path .
@@ -79,4 +88,9 @@ curl -fsSL https://raw.githubusercontent.com/ishaanko/arxiv-cli/main/skills/arxi
 
 ## Releasing
 
-This repo doubles as its own Homebrew tap via `Formula/arxiv.rb`. To release: tag `vX.Y.Z`, create a GitHub release with the `arxiv-X.Y.Z-arm64-darwin.tar.gz` binary asset, then bump `url`/`sha256`/`version` in the formula. Apple Silicon installs the prebuilt binary; other platforms build from the source tarball.
+This repo doubles as its own Homebrew tap (`Formula/arxiv.rb`) and Scoop bucket (`bucket/arxiv.json`). Every release must publish **both** binary assets, or the package manager for the missing platform silently stops updating:
+
+- `arxiv-X.Y.Z-arm64-darwin.tar.gz` — required by the Homebrew formula
+- `arxiv-X.Y.Z-x86_64-windows.zip` — required by the Scoop bucket's `autoupdate`
+
+To release: tag `vX.Y.Z`, build both assets and attach them to the GitHub release, then bump `url`/`sha256`/`version` in `Formula/arxiv.rb` and `bucket/arxiv.json`. Apple Silicon and Windows install the prebuilt binaries; other platforms build from the source tarball via Homebrew.
