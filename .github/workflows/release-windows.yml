@@ -1,0 +1,33 @@
+name: release-windows
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to attach the Windows binary to"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - name: Build
+        run: cargo build --release
+      - name: Package and upload
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          NAME="arxiv-${TAG#v}-x86_64-windows"
+          cd target/release
+          7z a "$NAME.zip" arxiv.exe
+          gh release upload "$TAG" "$NAME.zip" --clobber --repo "$GITHUB_REPOSITORY"
