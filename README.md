@@ -4,12 +4,21 @@ A fast, minimal arXiv CLI built for humans *and* agents. Single ~1.4 MB static b
 
 ## Install
 
+macOS / Linux (Homebrew):
+
 ```sh
 brew tap ishaanko/tap https://github.com/ishaanko/arxiv-cli
 brew install arxiv
 ```
 
-Or build from source:
+Windows (Scoop):
+
+```powershell
+scoop bucket add ishaanko https://github.com/ishaanko/arxiv-cli
+scoop install arxiv
+```
+
+Or build from source on any platform:
 
 ```sh
 cargo install --path .

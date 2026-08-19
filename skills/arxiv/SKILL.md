@@ -5,11 +5,14 @@ description: Search arXiv, fetch paper metadata/abstracts, download PDFs, and ge
 
 # arXiv CLI
 
-Use the `arxiv` binary (Homebrew-installed, on PATH) for all arXiv interactions instead of WebFetch on arxiv.org URLs. It talks to the official arXiv API and emits clean, parseable output.
+Use the `arxiv` binary (on PATH) for all arXiv interactions instead of WebFetch on arxiv.org URLs. It talks to the official arXiv API and emits clean, parseable output.
 
-If `arxiv` is not on PATH, install with:
-`brew tap ishaanko/tap https://github.com/ishaanko/arxiv-cli && brew install arxiv`
-(or fall back to WebFetch if Homebrew is unavailable).
+If `arxiv` is not on PATH, install it:
+- macOS/Linux: `brew tap ishaanko/tap https://github.com/ishaanko/arxiv-cli && brew install arxiv`
+- Windows: `scoop bucket add ishaanko https://github.com/ishaanko/arxiv-cli; scoop install arxiv`
+- Any platform with Rust: `cargo install --git https://github.com/ishaanko/arxiv-cli`
+
+(Fall back to WebFetch only if none of these package managers are available.)
 
 ## Commands
 
