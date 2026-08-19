@@ -32,7 +32,8 @@ jobs:
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid tag format: $TAG" >&2; exit 1; }
           NAME="arxiv-${TAG#v}-x86_64-windows"
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
-            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes
+            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes \
+            || gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
           cd target/release
           7z a "$NAME.zip" arxiv.exe
           gh release upload "$TAG" "$NAME.zip" --clobber --repo "$GITHUB_REPOSITORY"
