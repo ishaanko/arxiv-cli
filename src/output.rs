@@ -1,6 +1,9 @@
+use crate::client::SearchOutcome;
 use crate::model::Paper;
 use anyhow::Result;
 
+/// Print one search's results (single-query mode). JSON stays a flat array of
+/// papers so existing consumers keep working.
 pub fn print_list(papers: &[Paper], json: bool, ids_only: bool) -> Result<()> {
     if ids_only {
         for p in papers {
@@ -20,12 +23,60 @@ pub fn print_list(papers: &[Paper], json: bool, ids_only: bool) -> Result<()> {
         if i > 0 {
             println!();
         }
-        println!("{}  [{}]", p.id, p.primary_category);
-        println!("  {}", p.title);
-        println!("  {}", format_authors(&p.authors, 4));
-        println!("  {}  {}", date_only(&p.published), p.abs_url);
+        print_entry(p);
     }
     Ok(())
+}
+
+/// Print several searches at once (multi-query mode). JSON is an array of
+/// `{query, fallback, results}` objects, one per query, so agents can run a
+/// batch in a single process without shell loops.
+pub fn print_multi(sets: &[(String, SearchOutcome)], json: bool, ids_only: bool) -> Result<()> {
+    if ids_only {
+        for (_, outcome) in sets {
+            for p in &outcome.papers {
+                println!("{}", p.id);
+            }
+        }
+        return Ok(());
+    }
+    if json {
+        let arr: Vec<_> = sets
+            .iter()
+            .map(|(query, outcome)| {
+                serde_json::json!({
+                    "query": query,
+                    "fallback": outcome.fallback,
+                    "results": &outcome.papers,
+                })
+            })
+            .collect();
+        println!("{}", serde_json::to_string_pretty(&arr)?);
+        return Ok(());
+    }
+    for (i, (query, outcome)) in sets.iter().enumerate() {
+        if i > 0 {
+            println!();
+        }
+        let label = if query.is_empty() { "(filters only)" } else { query };
+        println!("== {label} ==");
+        if outcome.papers.is_empty() {
+            println!("  no results");
+            continue;
+        }
+        for p in &outcome.papers {
+            println!();
+            print_entry(p);
+        }
+    }
+    Ok(())
+}
+
+fn print_entry(p: &Paper) {
+    println!("{}  [{}]", p.id, p.primary_category);
+    println!("  {}", p.title);
+    println!("  {}", format_authors(&p.authors, 4));
+    println!("  {}  {}", date_only(&p.published), p.abs_url);
 }
 
 pub fn print_full(papers: &[Paper], json: bool) -> Result<()> {
