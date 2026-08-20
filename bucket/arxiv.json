@@ -1,12 +1,12 @@
 {
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "Fast, minimal arXiv CLI for humans and agents",
     "homepage": "https://github.com/ishaanko/arxiv-cli",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/ishaanko/arxiv-cli/releases/download/v0.1.1/arxiv-0.1.1-x86_64-windows.zip",
-            "hash": "99185200560d1475840898efd1c3437ae57d5fd60ed28c36b3fa74b2f02923a4"
+            "url": "https://github.com/ishaanko/arxiv-cli/releases/download/v0.1.2/arxiv-0.1.2-x86_64-windows.zip",
+            "hash": "01c49b59d6d3b86bcc13c63f9d3fb30e790b54428026c791a6eae91cd9064e23"
         }
     },
     "bin": "arxiv.exe",
