@@ -94,7 +94,7 @@ enum Command {
         #[arg(short, long)]
         json: bool,
         /// Print only arXiv IDs, one per line (for piping)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "json")]
         ids_only: bool,
     },
     /// Fetch full metadata for one or more papers by ID or URL
@@ -140,7 +140,7 @@ enum Command {
         #[arg(short, long)]
         json: bool,
         /// Print only arXiv IDs, one per line
-        #[arg(long)]
+        #[arg(long, conflicts_with = "json")]
         ids_only: bool,
     },
 }

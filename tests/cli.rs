@@ -46,6 +46,24 @@ fn plain_error_keeps_stdout_empty() {
     assert!(!out.stderr.is_empty(), "stderr must carry a message");
 }
 
+/// --json and --ids-only are two different output modes; asking for both would
+/// make stdout ambiguous (bare IDs on success, JSON on error), so it is
+/// rejected up front rather than silently picking one.
+#[test]
+fn json_and_ids_only_conflict() {
+    let out = arxiv()
+        .args(["search", "graph neural networks", "--json", "--ids-only"])
+        .output()
+        .expect("run arxiv");
+
+    assert!(!out.status.success(), "conflicting flags must be rejected");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("cannot be used with") || stderr.contains("conflict"),
+        "stderr should explain the conflict, got: {stderr}"
+    );
+}
+
 /// An empty query is a usage error and must honor the JSON contract too.
 #[test]
 fn empty_query_json_error() {
