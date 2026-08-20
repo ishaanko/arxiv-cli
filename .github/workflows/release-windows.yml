@@ -40,17 +40,24 @@ jobs:
             awk -v ver="$VER" \
               '$0 ~ "^## " ver " " { found = 1; next } /^## / { found = 0 } found' \
               CHANGELOG.md > release-notes.md
-            previous=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
-            if [ -n "$previous" ]; then
-              printf '\n**Full changelog**: https://github.com/%s/compare/%s...%s\n' \
-                "$GITHUB_REPOSITORY" "$previous" "$TAG" >> release-notes.md
-            fi
+            # Decide on the notes source from the extracted section alone, before
+            # adding the compare link (which would otherwise mask an empty
+            # section and skip the generated-notes fallback).
             if grep -q '[^[:space:]]' release-notes.md; then
-              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes-file release-notes.md
+              previous=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
+              if [ -n "$previous" ]; then
+                printf '\n**Full changelog**: https://github.com/%s/compare/%s...%s\n' \
+                  "$GITHUB_REPOSITORY" "$previous" "$TAG" >> release-notes.md
+              fi
+              notes=(--notes-file release-notes.md)
             else
               echo "warning: CHANGELOG.md has no section for $VER; using generated notes" >&2
-              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes
+              notes=(--generate-notes)
             fi
+            # A concurrent run may create the release between the view above and
+            # this create; treat that as success as long as it now exists.
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" "${notes[@]}" \
+              || gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
           fi
           cd target/release
           7z a "$NAME.zip" arxiv.exe
