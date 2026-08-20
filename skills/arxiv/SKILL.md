@@ -57,7 +57,7 @@ arxiv latest cs.CL --max 10 --json
 - Search matches with AND (every word must appear). A multi-word query that finds nothing is retried once with the terms ORed by relevance; `fallback: true` (or a stderr note) flags this. Pass `--strict` to force pure AND.
 - `--ids-only` on `search`/`latest` prints one ID per line for piping into `xargs arxiv get --json`.
 - Exit code 0 = success, nonzero = failure; the error goes to stderr as one line. With `--json`, stdout is always valid JSON even on failure (`{"error": "..."}`) and never empty.
-- Requests are paced (3 s apart). API calls have a 10 s overall deadline (`--timeout` to change); PDF downloads use it as a per-read stall timeout so large files are not cut off. Batch queries and IDs into one call rather than looping.
+- Requests are paced (3 s apart). Each API attempt has a 10 s whole-call deadline (`--timeout` to change); PDF downloads use it as a per-read stall timeout so large files are not cut off. Failed requests retry with backoff, so total time can exceed one timeout. Batch queries and IDs into one call rather than looping.
 - Sort options: `--sort relevance` (default) | `date` | `updated`. Paginate with `--max` and `--start`.
 - To read a paper's full text, download with `arxiv pdf` and read the file — do not WebFetch arxiv.org PDF URLs.
 - The arXiv API asks clients to keep request rates modest; batch lookups into one call (`arxiv get id1 id2 id3 --json`) instead of one call per ID.

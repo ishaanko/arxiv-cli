@@ -16,8 +16,10 @@ use std::process::ExitCode;
 struct Cli {
     #[command(subcommand)]
     command: Command,
-    /// Request timeout in seconds: an overall deadline for API calls, or a
-    /// per-read stall timeout for PDF downloads (which may be large)
+    /// Per-request timeout in seconds: a whole-call deadline for each API
+    /// attempt, or a per-read stall timeout for PDF downloads (which may be
+    /// large). A failed request may still be retried with backoff, so total
+    /// time under repeated failures can exceed one timeout.
     #[arg(long, global = true, default_value_t = 10)]
     timeout: u64,
 }

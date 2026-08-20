@@ -74,10 +74,12 @@ arxiv search 'ti:"mamba" AND cat:cs.LG'
 
 - The client keeps a 3-second gap between requests within one process, so a
   burst of searches never trips arXiv's rate limit.
-- Each API request has a hard overall deadline (10 s, set with `--timeout`), so
-  a slow trickle can never run past it. PDF downloads use the same value as a
-  per-read stall timeout, so a large file on a slow link is not cut off midway.
-  Empty, `429`, and `5xx` responses are retried with backoff.
+- Each API request has a hard whole-call deadline (10 s, set with `--timeout`),
+  so a single slow-trickling response can never run past it. PDF downloads use
+  the same value as a per-read stall timeout, so a large file on a slow link is
+  not cut off midway. `--timeout` bounds one attempt; empty, `429`, and `5xx`
+  responses are retried with backoff, so total time under repeated failures can
+  be longer.
 - Failures are loud: a one-line message on stderr and a nonzero exit code.
   With `--json`, stdout is always valid JSON — either the result or
   `{"error": "..."}` — and never empty.
