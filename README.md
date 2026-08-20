@@ -27,10 +27,13 @@ cargo install --path .
 ## Usage
 
 ```sh
-# Search (multi-word queries are phrase-matched; alias: `arxiv query`)
-arxiv search "attention is all you need" --max 5
+# Search — use short, title-like queries in quotes (alias: `arxiv query`)
+arxiv search "synthetic visual reasoning" --max 5
 arxiv search "diffusion models" --category cs.LG --sort date
 arxiv search --author "Yoshua Bengio" --title "generative" --max 10
+
+# Each argument is a separate query; run several in one paced process
+arxiv search "mixture of experts" "state space models" --json
 
 # Full metadata for one or more papers — accepts IDs, arXiv:… or URLs
 arxiv get 1706.03762
@@ -50,9 +53,38 @@ arxiv bibtex 1706.03762
 arxiv latest cs.CL --max 10
 ```
 
+## How search matches
+
+Give short, title-like queries and quote each one. Within a query the terms
+are ANDed: every word must appear somewhere in the paper. Each argument is a
+separate query, so `arxiv search "graph neural networks" "protein folding"`
+runs two searches, not one.
+
+If a multi-word query finds nothing, `arxiv` retries it once with the terms
+ORed and sorted by relevance, and prints a note that the fallback ran. Pass
+`--strict` to keep pure AND and skip the fallback. The default sort is
+relevance. For an exact phrase or raw arXiv syntax, pass it through directly:
+
+```sh
+arxiv search 'all:"chain of thought"'
+arxiv search 'ti:"mamba" AND cat:cs.LG'
+```
+
+## Reliability
+
+- The client keeps a 3-second gap between requests within one process, so a
+  burst of searches never trips arXiv's rate limit.
+- Each request has a hard timeout (10 s, set with `--timeout`). Empty, `429`,
+  and `5xx` responses are retried with backoff.
+- Failures are loud: a one-line message on stderr and a nonzero exit code.
+  With `--json`, stdout is always valid JSON — either the result or
+  `{"error": "..."}` — and never empty.
+
 ## Agent-friendly design
 
 - `--json` on `search`, `get`, `summary`, and `latest` emits clean structured JSON.
+- One query with `--json` returns a flat array of papers. Several queries return
+  an array of `{query, fallback, results}` objects, one per query.
 - `--ids-only` on `search`/`latest` prints one ID per line for piping:
   `arxiv search "state space models" --ids-only | xargs arxiv get --json`
 - Exit code `0` on success, `1` on failure, with errors on stderr — stdout stays parseable.
@@ -69,7 +101,9 @@ arxiv latest cs.CL --max 10
 | `--title`, `-t` | Restrict to words in the title |
 | `--abstract` | Restrict to words in the abstract |
 | `--sort`, `-s` | `relevance` (default), `date`, `updated` |
+| `--strict` | Require every term (pure AND); skip the OR fallback |
 | `--max`, `-m` / `--start` | Page size / offset for pagination |
+| `--timeout` | Hard timeout per HTTP request, in seconds (default 10) |
 
 ## Agent skill
 

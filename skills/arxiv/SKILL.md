@@ -19,13 +19,18 @@ If `arxiv` is not on PATH, install it:
 All ID arguments accept bare IDs (`1706.03762`, `2301.10945v2`, `cs/0301012`), `arXiv:`-prefixed IDs, and any arxiv.org URL (abs/pdf/html) interchangeably.
 
 ```sh
-# Search — multi-word queries are phrase-matched; use --json for structured output
+# Search — use short, title-like queries in quotes; --json for structured output
 arxiv search "diffusion models" --max 10 --json
 arxiv search "test-time compute" --category cs.LG --sort date --json
 arxiv search --author "Yoshua Bengio" --title "generative" --json
 
-# Advanced arXiv query syntax passes through untouched
+# Each argument is a separate query. Batch several in one paced process
+# instead of calling arxiv in a shell loop.
+arxiv search "mixture of experts" "state space models" --json
+
+# Advanced arXiv query syntax and exact phrases pass through untouched
 arxiv search 'ti:"mamba" AND cat:cs.LG' --json
+arxiv search 'all:"chain of thought"' --json
 
 # Full metadata (title, authors, abstract, categories, dates, DOI, links)
 arxiv get 1706.03762 --json
@@ -47,9 +52,12 @@ arxiv latest cs.CL --max 10 --json
 
 ## Agent conventions
 
-- Always pass `--json` when you will parse the output (`search`, `get`, `summary`, `latest`). JSON fields: `id`, `title`, `authors[]`, `summary`, `published`, `updated`, `categories[]`, `primary_category`, `abs_url`, `pdf_url`, plus `comment`/`doi`/`journal_ref` when present.
+- Always pass `--json` when you will parse the output (`search`, `get`, `summary`, `latest`). Paper JSON fields: `id`, `title`, `authors[]`, `summary`, `published`, `updated`, `categories[]`, `primary_category`, `abs_url`, `pdf_url`, plus `comment`/`doi`/`journal_ref` when present.
+- Search JSON shape: one query returns a flat array of papers; several queries return an array of `{query, fallback, results}` objects, one per query.
+- Search matches with AND (every word must appear). A multi-word query that finds nothing is retried once with the terms ORed by relevance; `fallback: true` (or a stderr note) flags this. Pass `--strict` to force pure AND.
 - `--ids-only` on `search`/`latest` prints one ID per line for piping into `xargs arxiv get --json`.
-- Exit code 0 = success, 1 = failure; errors go to stderr, stdout stays parseable.
+- Exit code 0 = success, nonzero = failure; the error goes to stderr as one line. With `--json`, stdout is always valid JSON even on failure (`{"error": "..."}`) and never empty.
+- Requests are paced (3 s apart) and time out after 10 s (`--timeout` to change); batch queries and IDs into one call rather than looping.
 - Sort options: `--sort relevance` (default) | `date` | `updated`. Paginate with `--max` and `--start`.
 - To read a paper's full text, download with `arxiv pdf` and read the file — do not WebFetch arxiv.org PDF URLs.
 - The arXiv API asks clients to keep request rates modest; batch lookups into one call (`arxiv get id1 id2 id3 --json`) instead of one call per ID.
