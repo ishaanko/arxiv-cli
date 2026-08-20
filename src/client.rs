@@ -65,15 +65,31 @@ fn pace() {
     *guard = Some(Instant::now());
 }
 
-fn agent() -> ureq::Agent {
+/// Build an agent for the given transfer size.
+///
+/// `Small` API responses get an overall deadline (`.timeout()` covers connect,
+/// reads, and the whole body), so a slow trickle can never run past `--timeout`.
+/// A `Large` PDF instead gets a per-read stall timeout: a steady download of a
+/// big file must not be killed at the deadline, but a stalled socket still is.
+fn agent(size: Transfer) -> ureq::Agent {
     let t = Duration::from_secs(TIMEOUT_SECS.load(Ordering::Relaxed));
-    ureq::AgentBuilder::new()
+    let builder = ureq::AgentBuilder::new()
         .user_agent(USER_AGENT)
         .timeout_connect(t)
-        .timeout_read(t)
-        .timeout_write(t)
-        .redirects(4)
-        .build()
+        .redirects(4);
+    let builder = match size {
+        Transfer::Small => builder.timeout(t),
+        Transfer::Large => builder.timeout_read(t).timeout_write(t),
+    };
+    builder.build()
+}
+
+#[derive(Clone, Copy)]
+enum Transfer {
+    /// A small API or text response; bounded by an overall deadline.
+    Small,
+    /// A large body (a PDF); bounded by a per-read stall timeout.
+    Large,
 }
 
 /// GET the URL and return the raw body, retrying on rate limiting (429),
@@ -81,7 +97,7 @@ fn agent() -> ureq::Agent {
 /// empty bodies. arXiv sheds load with 503s and sometimes returns an empty
 /// body under stress; both must be retried or callers get "Expecting value"
 /// from a downstream JSON parse. Every attempt is paced by `MIN_REQUEST_GAP`.
-fn request_bytes(url: &str) -> Result<Vec<u8>> {
+fn request_bytes(url: &str, size: Transfer) -> Result<Vec<u8>> {
     const MAX_ATTEMPTS: u32 = 4;
     const BACKOFF_SECS: [u64; 3] = [5, 15, 30];
     let mut attempt = 0;
@@ -91,7 +107,7 @@ fn request_bytes(url: &str) -> Result<Vec<u8>> {
 
         let retry_after: Option<u64>;
         let reason: String;
-        match agent().get(url).call() {
+        match agent(size).get(url).call() {
             Ok(resp) => {
                 let mut buf = Vec::with_capacity(1 << 16);
                 match resp.into_reader().read_to_end(&mut buf) {
@@ -137,7 +153,7 @@ fn request_bytes(url: &str) -> Result<Vec<u8>> {
 }
 
 fn request_string(url: &str) -> Result<String> {
-    let bytes = request_bytes(url)?;
+    let bytes = request_bytes(url, Transfer::Small)?;
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
@@ -359,7 +375,7 @@ pub fn download_pdf(id: &str, output: Option<&str>, dir: Option<&str>) -> Result
         }
     }
 
-    let buf = request_bytes(&url).context("failed to download PDF")?;
+    let buf = request_bytes(&url, Transfer::Large).context("failed to download PDF")?;
     if !buf.starts_with(b"%PDF") {
         bail!("response from {url} is not a PDF (paper may not exist or has no PDF version)");
     }
