@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
+          # The release-notes step needs the previous tag for a compare link.
+          fetch-depth: 0
           persist-credentials: false
       - name: Build
         run: cargo build --release
@@ -31,9 +33,32 @@ jobs:
           TAG="$TAG_INPUT"
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid tag format: $TAG" >&2; exit 1; }
           NAME="arxiv-${TAG#v}-x86_64-windows"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
-            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes \
-            || gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
+          # Create the release if it does not exist yet, taking the notes from
+          # the tag's section in CHANGELOG.md (keep that section user-facing).
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            VER="${TAG#v}"
+            awk -v ver="$VER" \
+              '$0 ~ "^## " ver " " { found = 1; next } /^## / { found = 0 } found' \
+              CHANGELOG.md > release-notes.md
+            # Decide on the notes source from the extracted section alone, before
+            # adding the compare link (which would otherwise mask an empty
+            # section and skip the generated-notes fallback).
+            if grep -q '[^[:space:]]' release-notes.md; then
+              previous=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
+              if [ -n "$previous" ]; then
+                printf '\n**Full changelog**: https://github.com/%s/compare/%s...%s\n' \
+                  "$GITHUB_REPOSITORY" "$previous" "$TAG" >> release-notes.md
+              fi
+              notes=(--notes-file release-notes.md)
+            else
+              echo "warning: CHANGELOG.md has no section for $VER; using generated notes" >&2
+              notes=(--generate-notes)
+            fi
+            # A concurrent run may create the release between the view above and
+            # this create; treat that as success as long as it now exists.
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" "${notes[@]}" \
+              || gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
+          fi
           cd target/release
           7z a "$NAME.zip" arxiv.exe
           gh release upload "$TAG" "$NAME.zip" --clobber --repo "$GITHUB_REPOSITORY"
